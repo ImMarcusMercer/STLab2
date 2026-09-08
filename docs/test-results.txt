@@ -1,0 +1,124 @@
+Creating test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+
+Found 84 test(s).
+Operations to perform:
+  Synchronize unmigrated apps: django_filters, drf_spectacular, rest_framework, staticfiles
+  Apply all migrations: academics, auth, authtoken, contenttypes, sessions
+Synchronizing apps without migrations:
+  Creating tables...
+    Running deferred SQL...
+Running migrations:
+  Applying contenttypes.0001_initial... OK
+  Applying contenttypes.0002_remove_content_type_name... OK
+  Applying auth.0001_initial... OK
+  Applying auth.0002_alter_permission_name_max_length... OK
+  Applying auth.0003_alter_user_email_max_length... OK
+  Applying auth.0004_alter_user_username_opts... OK
+  Applying auth.0005_alter_user_last_login_null... OK
+  Applying auth.0006_require_contenttypes_0002... OK
+  Applying auth.0007_alter_validators_add_error_messages... OK
+  Applying auth.0008_alter_user_username_max_length... OK
+  Applying auth.0009_alter_user_last_name_max_length... OK
+  Applying auth.0010_alter_group_name_max_length... OK
+  Applying auth.0011_update_proxy_permissions... OK
+  Applying auth.0012_alter_user_first_name_max_length... OK
+  Applying academics.0001_initial... OK
+  Applying authtoken.0001_initial... OK
+  Applying authtoken.0002_auto_20160226_1747... OK
+  Applying authtoken.0003_tokenproxy... OK
+  Applying authtoken.0004_alter_tokenproxy_options... OK
+  Applying sessions.0001_initial...test_create_retrieve_replace_patch_delete_resources (academics.test_lifecycle.ResourceLifecycleTests.test_create_retrieve_replace_patch_delete_resources) ... ok
+test_grade_create_replace_patch_retrieve (academics.test_lifecycle.ResourceLifecycleTests.test_grade_create_replace_patch_retrieve) ... ok
+test_academic_record_pages_enrollments_before_grouping (academics.test_regressions.CollectionRegressionTests.test_academic_record_pages_enrollments_before_grouping) ... ok
+test_foreign_key_filters (academics.test_regressions.CollectionRegressionTests.test_foreign_key_filters) ... ok
+test_malformed_json_and_unknown_route (academics.test_regressions.CollectionRegressionTests.test_malformed_json_and_unknown_route) ... ok
+test_nested_collections_are_paginated (academics.test_regressions.CollectionRegressionTests.test_nested_collections_are_paginated) ... ok
+test_non_decimal_and_oversized_page_numbers_are_validation_errors (academics.test_regressions.CollectionRegressionTests.test_non_decimal_and_oversized_page_numbers_are_validation_errors) ... ok
+test_page_size_capped_and_invalid_sort_rejected (academics.test_regressions.CollectionRegressionTests.test_page_size_capped_and_invalid_sort_rejected) ... ok
+test_program_id_filter_excludes_other_programs (academics.test_regressions.CollectionRegressionTests.test_program_id_filter_excludes_other_programs) ... ok
+test_unexpected_exception_does_not_leak (academics.test_regressions.CollectionRegressionTests.test_unexpected_exception_does_not_leak) ... Unhandled API exception: RuntimeError
+ok
+test_capacity_cannot_be_reduced_below_occupied_seats (academics.test_regressions.IntegrityRegressionTests.test_capacity_cannot_be_reduced_below_occupied_seats) ... ok
+test_database_duplicate_enrollment_constraint (academics.test_regressions.IntegrityRegressionTests.test_database_duplicate_enrollment_constraint) ... ok
+test_database_grade_range_constraint (academics.test_regressions.IntegrityRegressionTests.test_database_grade_range_constraint) ... ok
+test_dropped_enrollment_cannot_be_graded (academics.test_regressions.IntegrityRegressionTests.test_dropped_enrollment_cannot_be_graded) ... ok
+test_enrollment_links_immutable (academics.test_regressions.IntegrityRegressionTests.test_enrollment_links_immutable) ... ok
+test_full_offering_cannot_accept_another_student (academics.test_regressions.IntegrityRegressionTests.test_full_offering_cannot_accept_another_student) ... ok
+test_graded_enrollment_cannot_be_dropped_or_deleted (academics.test_regressions.IntegrityRegressionTests.test_graded_enrollment_cannot_be_dropped_or_deleted) ... ok
+test_inactive_student_cannot_enroll (academics.test_regressions.IntegrityRegressionTests.test_inactive_student_cannot_enroll) ... ok
+test_invalid_date_order_on_partial_update (academics.test_regressions.IntegrityRegressionTests.test_invalid_date_order_on_partial_update) ... ok
+test_invalid_grade_enrollment (academics.test_regressions.IntegrityRegressionTests.test_invalid_grade_enrollment) ... ok
+test_invalid_instructor_role (academics.test_regressions.IntegrityRegressionTests.test_invalid_instructor_role) ... ok
+test_invalid_status_and_year (academics.test_regressions.IntegrityRegressionTests.test_invalid_status_and_year) ... ok
+test_referenced_program_delete_conflicts (academics.test_regressions.IntegrityRegressionTests.test_referenced_program_delete_conflicts) ... ok
+test_admin_cannot_delete_self (academics.test_regressions.SecurityRegressionTests.test_admin_cannot_delete_self) ... ok
+test_cannot_escalate_via_undeclared_user_fields (academics.test_regressions.SecurityRegressionTests.test_cannot_escalate_via_undeclared_user_fields) ... ok
+test_deactivated_account_rejected_for_login_and_token (academics.test_regressions.SecurityRegressionTests.test_deactivated_account_rejected_for_login_and_token) ... ok
+test_expired_token_rejected (academics.test_regressions.SecurityRegressionTests.test_expired_token_rejected) ... ok
+test_instructor_cannot_read_full_academic_history_or_profile (academics.test_regressions.SecurityRegressionTests.test_instructor_cannot_read_full_academic_history_or_profile) ... ok
+test_instructor_cannot_update_other_grade (academics.test_regressions.SecurityRegressionTests.test_instructor_cannot_update_other_grade) ... ok
+test_login_rate_limited (academics.test_regressions.SecurityRegressionTests.test_login_rate_limited) ... ok
+test_login_renews_expired_token_even_with_stale_header (academics.test_regressions.SecurityRegressionTests.test_login_renews_expired_token_even_with_stale_header) ... ok
+test_password_update_invalidates_old_token_and_hash_is_hidden (academics.test_regressions.SecurityRegressionTests.test_password_update_invalidates_old_token_and_hash_is_hidden) ... ok
+test_registrar_cannot_reassign_account_ownership (academics.test_regressions.SecurityRegressionTests.test_registrar_cannot_reassign_account_ownership) ... ok
+test_roster_is_scoped_and_omits_private_contact_data (academics.test_regressions.SecurityRegressionTests.test_roster_is_scoped_and_omits_private_contact_data) ... ok
+test_student_cannot_access_other_students_nested_resources (academics.test_regressions.SecurityRegressionTests.test_student_cannot_access_other_students_nested_resources) ... ok
+test_student_cannot_read_other_enrollment_or_grade (academics.test_regressions.SecurityRegressionTests.test_student_cannot_read_other_enrollment_or_grade) ... ok
+test_seeding_is_repeatable_and_minimum_counts_hold (academics.test_regressions.SeedRegressionTests.test_seeding_is_repeatable_and_minimum_counts_hold) ... ok
+test_all_resource_and_nested_get_responses_match_openapi (academics.test_schema.SchemaContractTests.test_all_resource_and_nested_get_responses_match_openapi) ... ok
+test_documentation_is_public (academics.test_schema.SchemaContractTests.test_documentation_is_public) ... ok
+test_documented_examples_match_their_schemas (academics.test_schema.SchemaContractTests.test_documented_examples_match_their_schemas) ... ok
+test_login_response_matches_openapi (academics.test_schema.SchemaContractTests.test_login_response_matches_openapi) ... ok
+test_academic_record_shape (academics.tests.AcademicRecordTests.test_academic_record_shape) ... ok
+test_student_cannot_view_another_record (academics.tests.AcademicRecordTests.test_student_cannot_view_another_record) ... ok
+test_invalid_password (academics.tests.AuthenticationTests.test_invalid_password) ... ok
+test_invalid_token (academics.tests.AuthenticationTests.test_invalid_token) ... ok
+test_logout_invalidates_token (academics.tests.AuthenticationTests.test_logout_invalidates_token) ... ok
+test_me (academics.tests.AuthenticationTests.test_me) ... ok
+test_protected_endpoint_rejects_unauthenticated (academics.tests.AuthenticationTests.test_protected_endpoint_rejects_unauthenticated) ... ok
+test_unknown_email (academics.tests.AuthenticationTests.test_unknown_email) ... ok
+test_valid_login (academics.tests.AuthenticationTests.test_valid_login) ... ok
+test_admin_can_create_program (academics.tests.AuthorizationTests.test_admin_can_create_program) ... ok
+test_instructor_forbidden_to_create_student (academics.tests.AuthorizationTests.test_instructor_forbidden_to_create_student) ... ok
+test_instructor_sees_only_own_offerings (academics.tests.AuthorizationTests.test_instructor_sees_only_own_offerings) ... ok
+test_registrar_can_manage_students (academics.tests.AuthorizationTests.test_registrar_can_manage_students) ... ok
+test_student_forbidden_to_create (academics.tests.AuthorizationTests.test_student_forbidden_to_create) ... ok
+test_student_forbidden_to_manage_users (academics.tests.AuthorizationTests.test_student_forbidden_to_manage_users) ... ok
+test_filter (academics.tests.CollectionTests.test_filter) ... ok
+test_invalid_pagination (academics.tests.CollectionTests.test_invalid_pagination) ... ok
+test_pagination_metadata (academics.tests.CollectionTests.test_pagination_metadata) ... ok
+test_search (academics.tests.CollectionTests.test_search) ... ok
+test_sort (academics.tests.CollectionTests.test_sort) ... ok
+test_duplicate_enrollment_prevented (academics.tests.EnrollmentTests.test_duplicate_enrollment_prevented) ... ok
+test_invalid_references (academics.tests.EnrollmentTests.test_invalid_references) ... ok
+test_student_can_see_only_own_enrollments (academics.tests.EnrollmentTests.test_student_can_see_only_own_enrollments) ... ok
+test_student_enrollments_action (academics.tests.EnrollmentTests.test_student_enrollments_action) ... ok
+test_valid_enrollment (academics.tests.EnrollmentTests.test_valid_enrollment) ... ok
+test_grade_score_out_of_range (academics.tests.GradeTests.test_grade_score_out_of_range) ... ok
+test_instructor_can_grade_assigned_offering (academics.tests.GradeTests.test_instructor_can_grade_assigned_offering) ... ok
+test_instructor_cannot_grade_another_instructors_offering (academics.tests.GradeTests.test_instructor_cannot_grade_another_instructors_offering) ... ok
+test_invalid_finalized_grade_without_rating (academics.tests.GradeTests.test_invalid_finalized_grade_without_rating) ... ok
+test_student_cannot_modify_grades (academics.tests.GradeTests.test_student_cannot_modify_grades) ... ok
+test_create_student (academics.tests.StudentTests.test_create_student) ... ok
+test_duplicate_student_number (academics.tests.StudentTests.test_duplicate_student_number) ... ok
+test_invalid_email (academics.tests.StudentTests.test_invalid_email) ... ok
+test_invalid_program (academics.tests.StudentTests.test_invalid_program) ... ok
+test_not_found (academics.tests.StudentTests.test_not_found) ... ok
+test_retrieve (academics.tests.StudentTests.test_retrieve) ... ok
+test_student_cannot_access_another_student (academics.tests.StudentTests.test_student_cannot_access_another_student) ... ok
+test_update (academics.tests.StudentTests.test_update) ... ok
+test_academic_term_year_format (academics.tests.ValidationTests.test_academic_term_year_format) ... ok
+test_password_policy_enforced (academics.tests.ValidationTests.test_password_policy_enforced) ... ok
+test_strict_missing_field_rejected (academics.tests.ValidationTests.test_strict_missing_field_rejected) ... ok
+test_unknown_field_rejected (academics.tests.ValidationTests.test_unknown_field_rejected) ... ok
+test_two_requests_cannot_take_the_last_seat (academics.test_concurrency.CapacityConcurrencyTests.test_two_requests_cannot_take_the_last_seat) ... Database operation failed (OperationalError).
+ok
+
+----------------------------------------------------------------------
+Ran 84 tests in 41.986s
+
+OK
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+
+ OK
+System check identified no issues (0 silenced).

@@ -57,15 +57,13 @@ paginated result object for lists). Failed requests use a consistent envelope:
 }
 ```
 
-Domain/action endpoints (`auth/*`, `/students/{id}/enrollments`,
-`/students/{id}/grades`, `/students/{id}/academic-record`,
-`/course-offerings/{id}/students`) use a success envelope:
+Login, current-user and academic-record endpoints use a success envelope:
 
 ```json
 {
   "success": true,
-  "message": "Enrollments retrieved.",
-  "data": [ ... ]
+  "message": "Academic record retrieved.",
+  "data": { "student_id": 1, "terms": [], "pagination": { "count": 0, "page": 1, "per_page": 20, "last_page": 1, "next": null, "previous": null } }
 }
 ```
 
@@ -75,13 +73,14 @@ Domain/action endpoints (`auth/*`, `/students/{id}/enrollments`,
 |------|---------------------------------------------------------------------|
 | 200  | Successful retrieval/update with body                               |
 | 201  | Resource created                                                    |
-| 204  | Successful operation, no body (logout)                              |
+| 204  | Successful deletion or logout, no body                             |
 | 400  | Malformed request                                                   |
 | 401  | Missing or invalid authentication                                   |
 | 403  | Authenticated but not permitted                                     |
 | 404  | Resource not found                                                  |
 | 409  | Duplicate/conflicting state or protected resource conflict          |
 | 422  | Request validation failed                                           |
+| 429  | Login rate limit exceeded                                          |
 | 500  | Internal server error (no internals leaked)                         |
 | 503  | Database temporarily unavailable                                    |
 
@@ -95,14 +94,18 @@ Domain/action endpoints (`auth/*`, `/students/{id}/enrollments`,
 | `/academic-terms`| CRUD | CRUD      | read                          | read               |
 | `/course-offerings`| CRUD| CRUD     | read (own only)               | read               |
 | `/enrollments`  |  CRUD | CRUD      | read (own offerings only)     | read (own only)    |
-| `/grades`       | CRUD  | CRUD      | create/update (own offerings only) | read (own only) |
-| `/students`     |  CRUD | CRUD      | read (enrolled students)      | read (own only)    |
+| `/grades`       | CRU   | CRU       | create/update (own offerings only) | read (own only) |
+| `/students`     |  CRUD | CRUD      | forbidden; use offering rosters | read (own only) |
 
 Object-level rules are enforced on the server:
 - A `STUDENT` requesting another student's profile, enrollments, grades, or academic
   record receives `404` (the resource is filtered out of the query set).
 - An `INSTRUCTOR` grading an enrollment outside their offerings receives `403`.
-- Admin cannot demote or deactivate themselves.
+- Admin cannot demote, deactivate or delete themselves.
+- Only administrators can set/change a student's `user_id` login-account link.
+- Instructors cannot access student profiles or nested student endpoints; use the
+  scoped `/enrollments`, `/grades` and offering roster routes. Another instructor's
+  grade detail is hidden with 404; a POST referencing their enrollment returns 403.
 
 ## Students
 
@@ -113,7 +116,7 @@ Object-level rules are enforced on the server:
 | GET    | `/students/{id}`              | Retrieve student                           |
 | PUT    | `/students/{id}`              | Replace student                            |
 | PATCH  | `/students/{id}`              | Partial update                             |
-| DELETE | `/students/{id}`              | Delete/deactivate? (use status=INACTIVE)   |
+| DELETE | `/students/{id}`              | Delete if unreferenced; otherwise 409     |
 | GET    | `/students/{id}/enrollments`  | Student enrollments                        |
 | GET    | `/students/{id}/grades`       | Student grades                             |
 | GET    | `/students/{id}/academic-record` | Aggregated record grouped by term       |
@@ -181,7 +184,24 @@ Rules:
 
 ## Search, Filtering, Sorting, Pagination
 
-Available on every collection endpoint.
+Search, filtering and sorting are available on main resource collections. All collections
+are paginated, including nested enrollments, grades and offering rosters. Nested routes
+support `page` and `per_page`; their parent ID supplies their scope.
+
+Academic records page enrollment rows before grouping by term. The success envelope's
+`data.pagination` contains navigation metadata and `data.terms` contains the groups on
+that page. A term may span pages. Follow `data.pagination.next` and merge by term ID.
+
+| Collection | Filters | Search | Sort fields |
+|---|---|---|---|
+| users | role, is_active | name, email | id, name, email, created_at |
+| students | program_id, year_level, status | student_number, first_name, last_name, email | student_number, last_name, year_level, created_at |
+| programs | status | code, name | code, name, created_at |
+| courses | status | course_code, course_title | course_code, course_title, units, created_at |
+| academic-terms | academic_year, semester, status | academic_year | academic_year, start_date, end_date, created_at |
+| course-offerings | course_id, academic_term_id, instructor_id, status, section | course code/title, section, room | section, schedule, capacity, created_at |
+| enrollments | student_id, course_offering_id, status | student number/name, section, course code | enrollment_date, created_at |
+| grades | enrollment_id, status | student number/name, section | midterm_grade, final_grade, created_at |
 
 | Feature   | Example                                                    |
 |-----------|------------------------------------------------------------|
@@ -205,6 +225,47 @@ Paginated response envelope:
 ```
 
 Invalid pagination values (`page=x`) return 422.
+Unknown sort fields return 422. Prefix a field with `-` for descending order; combine
+fields with commas. Equal sort values use an ID tie breaker. Unknown filter parameters
+are ignored by django-filter, so use the documented parameter names.
+
+## Users and roles
+
+`GET/POST /users`, `GET/PUT/PATCH/DELETE /users/{id}`; administrator only.
+Public fields: `id`, `name`, `email`, `role`, `is_active`, `created_at`, `updated_at`.
+`password` is write-only and required on creation/full PUT; use PATCH for updates that
+do not change the password. Passwords require 12+ characters and pass Django's
+similarity, common-password and numeric-password validators. Password updates revoke
+the previous token. Fields such as `is_superuser` are not writable through this API.
+
+## Request examples
+
+Replace referenced IDs with IDs returned by your own requests. Exact field schemas,
+required/optional flags and response types are in `/api/docs` and `openapi.yaml`.
+
+```json
+{"student_number":"2026-99999","first_name":"Ana","last_name":"Santos","program_id":1,"year_level":1,"email":"ana@example.com"}
+```
+
+```json
+{"course_code":"LAB101","course_title":"REST API Laboratory","units":"3.0"}
+```
+
+```json
+{"academic_year":"2026-2027","semester":"FIRST","start_date":"2026-08-01","end_date":"2026-12-20"}
+```
+
+```json
+{"course_id":1,"academic_term_id":1,"instructor_id":3,"section":"A","schedule":"MW 09:00-10:30","capacity":30}
+```
+
+```json
+{"student_id":1,"course_offering_id":1}
+```
+
+```json
+{"enrollment_id":1,"midterm_grade":"85.00","final_grade":"90.00","status":"FINALIZED","remarks":"Passed"}
+```
 
 ## Error Examples
 

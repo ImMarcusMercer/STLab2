@@ -1,128 +1,101 @@
-# Entity Relationship Diagram (ERD)
+# Entity relationship diagram
 
-## Relationships
-
-```
-users 1───0..1 students
-programs 1───* students
-courses 1───* course_offerings
-academic_terms 1───* course_offerings
-users (instructor) 1───* course_offerings
-students 1───* enrollments
-course_offerings 1───* enrollments
-enrollments 1───0..1 grades (OneToOne)
-```
-
-## Text ERD
-
-```
-+------------------+       +------------------+
-| users            |       | programs         |
-|------------------|       |------------------|
-| id PK            |       | id PK            |
-| name             | 1   1 | code UQ          |
-| email UQ         |O------O| name             |
-| password_hash    |  0..1 | description      |
-| role             |       | status           |
-| is_active        |       | created_at       |
-| created_at       |       | updated_at       |
-| updated_at       |       +------------------+
-+------------------+               |
-                                   | 1
-                                   |
-                                   | *
-                                   v
-        +------------------+       +------------------+
-        | students         |       | (program FK)     |
-        |------------------|       +------------------+
-        | id PK            |
-        | student_number UQ|
-        | first_name       |
-        | middle_name      |
-        | last_name (idx)  |
-        | suffix           |
-        | birth_date       |
-        | email            |
-        | contact_number   |
-        | address          |
-        | program_id FK -> programs.id
-        | user_id FK  -> users.id (1..0..1)
-        | year_level  (1-6)
-        | status (idx)
-        | created_at / updated_at
-        +------------------+
-```
-
-```
-+------------------+       +------------------+
-| academic_terms   |       | courses          |
-|------------------|       |------------------|
-| id PK            |       | id PK            |
-| academic_year    | 1     | course_code UQ   |
-| semester         |O------| course_title     |
-| start_date       |   *   | description      |
-| end_date         |       | units (0.5-12)   |
-| status           |       | status           |
-| created_at       |       | created_at       |
-| updated_at       |       | updated_at       |
-+------------------+       +------------------+
-        |                           |
-        | 1                         | 1
-        | *                         | *
-        v                           v
-+-----------------------------------------------------------------------------------+
-| course_offerings                                                                    |
-| id PK                                                                              |
-| course_id FK -> courses.id                                                         |
-| academic_term_id FK -> academic_terms.id                                           |
-| instructor_id FK -> users.id                                                       |
-| section            (course + term + section UNIQUE)                                |
-| schedule / room / capacity (1-1000) / status                                       |
-| created_at / updated_at                                                            |
-+-----------------------------------------------------------------------------------+
-        | 1
-        | *
-        v
-+-----------------------------------------------------------------------------------+
-| enrollments                                                                        |
-| id PK                                                                              |
-| student_id FK -> students.id                                                       |
-| course_offering_id FK -> course_offerings.id                                       |
-| enrollment_date                                                                    |
-| status  (ENROLLED / DROPPED / COMPLETED)                                           |
-| created_at / updated_at                                                            |
-| UNIQUE (student_id, course_offering_id)   -- duplicate enrollment prevention       |
-+-----------------------------------------------------------------------------------+
-        | 1
-        | 0..1
-        v
-+-----------------------------------------------------------------------------------+
-| grades                                                                             |
-| id PK                                                                              |
-| enrollment_id FK -> enrollments.id (OneToOne, UNIQUE)                              |
-| midterm_grade (0-100, nullable)                                                    |
-| final_grade   (0-100, nullable; required when FINALIZED)                           |
-| remarks                                                                             |
-| status (DRAFT / FINALIZED)                                                          |
-| created_at / updated_at                                                             |
-+-----------------------------------------------------------------------------------+
+```mermaid
+erDiagram
+    USERS o|--o| STUDENTS : "optional login account"
+    PROGRAMS ||--o{ STUDENTS : contains
+    USERS ||--o{ COURSE_OFFERINGS : teaches
+    COURSES ||--o{ COURSE_OFFERINGS : offered_as
+    ACADEMIC_TERMS ||--o{ COURSE_OFFERINGS : schedules
+    STUDENTS ||--o{ ENROLLMENTS : registers
+    COURSE_OFFERINGS ||--o{ ENROLLMENTS : contains
+    ENROLLMENTS ||--o| GRADES : receives
+    USERS {
+        bigint id PK
+        string email UK
+        string name
+        string password "Django password hash"
+        string role "ADMIN REGISTRAR INSTRUCTOR STUDENT"
+        boolean is_active
+    }
+    PROGRAMS {
+        bigint id PK
+        string code UK
+        string name
+        text description
+        string status
+    }
+    STUDENTS {
+        bigint id PK
+        bigint user_id FK,UK "nullable"
+        bigint program_id FK
+        string student_number UK
+        string first_name
+        string middle_name
+        string last_name "indexed"
+        string suffix
+        date birth_date "nullable"
+        string email
+        string contact_number
+        text address
+        int year_level "1 through 6"
+        string status "indexed"
+    }
+    COURSES {
+        bigint id PK
+        string course_code UK
+        string course_title
+        text description
+        decimal units "0.5 through 12"
+        string status
+    }
+    ACADEMIC_TERMS {
+        bigint id PK
+        string academic_year "unique with semester"
+        string semester
+        date start_date
+        date end_date
+        string status
+    }
+    COURSE_OFFERINGS {
+        bigint id PK
+        bigint course_id FK
+        bigint academic_term_id FK
+        bigint instructor_id FK
+        string section "unique with course and term"
+        string schedule
+        string room
+        int capacity "1 through 1000"
+        string status
+    }
+    ENROLLMENTS {
+        bigint id PK
+        bigint student_id FK "unique with offering"
+        bigint course_offering_id FK
+        date enrollment_date
+        string status "ENROLLED DROPPED COMPLETED"
+    }
+    GRADES {
+        bigint id PK
+        bigint enrollment_id FK,UK
+        decimal midterm_grade "nullable 0 through 100"
+        decimal final_grade "nullable 0 through 100"
+        string remarks
+        string status "DRAFT FINALIZED"
+    }
 ```
 
-## Integrity Notes
+All eight domain entities have `created_at` and `updated_at`; the diagram omits repeated
+timestamps for readability. Django adds its own authentication tables and
+`authtoken_token` (one token per user). Actual domain table names have the `academics_`
+prefix. The authoritative schema is `academics/migrations/0001_initial.py`.
 
-- `student_number` and `course_code` are unique (`UQ`) at the database level.
-- `email` on `users` is unique and used as the login identifier.
-- Foreign keys use `on_delete=PROTECT` so referenced records cannot vanish silently;
-  conflicting deletes raise a 409 (use status `INACTIVE` to deactivate).
-- Check constraints: `year_level` between 1 and 6, `units` between 0.5 and 12,
-  `capacity` between 1 and 1000, grade values between 0 and 100, term end >= start.
-- `Index` on `students.last_name` and `students.status` support the most frequent search
-  and filter paths.
-- Duplicate enrollment in the same offering is prevented by a unique constraint plus a
-  serializer check.
+Domain foreign keys use `PROTECT`: deletion of referenced records returns 409. Unique
+constraints prevent duplicate student numbers, course/program codes, user emails,
+term/semester combinations, offering sections, enrollments and grades. Check constraints
+enforce grade/unit/capacity/year ranges, ordered dates and finalized-grade completeness.
+Foreign keys are indexed by Django; student last name and status have explicit indexes.
 
-## Database
-
-SQLite (default `db.sqlite3`), reproducible from `academics/migrations/`. To run on
-PostgreSQL/MySQL instead, swap `DATABASES` in `config/settings.py` and apply the same
-migrations (they are engine-agnostic).
+The user-to-student relationship is optional on both sides. Only an administrator can
+link a STUDENT account to a profile. An offering's instructor must be an active
+INSTRUCTOR account; that cross-table rule is checked by the API.

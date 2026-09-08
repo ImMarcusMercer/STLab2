@@ -1,382 +1,1836 @@
 {
   "info": {
-    "_postman_id": "9f1c9f40-3d4e-4b6a-9e02-1ad9c1f0b3a2",
-    "name": "Student Information Management API",
-    "description": "Demonstration collection for the Student Information Management REST API. Base URL http://127.0.0.1:8000/api/v1. Authenticate first (Auth/Login) and the token is stored in `token`.",
+    "name": "Student Information API - Acceptance Demonstration",
+    "description": "Set demo_password to your local DEMO_PASSWORD, then run all folders in order against a seeded local database. IDs and tokens are captured automatically. Each run adds demonstration records. Never export populated token/password variables.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "base", "value": "http://127.0.0.1:8000/api/v1" },
-    { "key": "token", "value": "" }
+    {
+      "key": "base",
+      "value": "http://127.0.0.1:8000/api/v1"
+    },
+    {
+      "key": "demo_password",
+      "value": ""
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (pm.info.requestName === 'Admin login') pm.collectionVariables.set('run_id', Date.now().toString());"
+        ]
+      }
+    }
   ],
   "item": [
     {
-      "name": "Authentication",
+      "name": "01 Authentication",
       "item": [
         {
-          "name": "Login (admin)",
+          "name": "Admin login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@demo.edu\",\n  \"password\": \"{{demo_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "const json = pm.response.json();",
-                  "if (json.success) { pm.collectionVariables.set('token', json.data.token); }"
-                ],
-                "type": "text/javascript"
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) pm.collectionVariables.set('admin_token', pm.response.json().data.token);"
+                ]
               }
             }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"admin@demo.edu\",\n  \"password\": \"DemoPass2026!\"\n}"
-            },
-            "url": "{{base}}/auth/login"
-          }
+          ]
         },
         {
-          "name": "Login (student) - role check",
+          "name": "Invalid password",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base}}/auth/login",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"juan.santos.1@student.demo.edu\",\n  \"password\": \"DemoPass2026!\"\n}"
-            },
-            "url": "{{base}}/auth/login"
-          }
+              "raw": "{\n  \"email\": \"admin@demo.edu\",\n  \"password\": \"incorrect\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Login - wrong password (FAIL expected 401)",
+          "name": "Missing authentication",
           "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"admin@demo.edu\",\n  \"password\": \"wrong-password\"\n}"
-            },
-            "url": "{{base}}/auth/login"
-          }
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base}}/students"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Current user",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Token {{token}}" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
             "url": "{{base}}/auth/me"
-          }
-        },
-        {
-          "name": "Logout",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Token {{token}}" }],
-            "url": "{{base}}/auth/logout"
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
     {
-      "name": "Students",
+      "name": "02 Users and Roles",
       "item": [
         {
-          "name": "List students (search+filter+sort+pagination)",
+          "name": "Create student login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/users",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo Student\",\n  \"email\": \"student.{{run_id}}@example.com\",\n  \"password\": \"{{demo_password}}\",\n  \"role\": \"STUDENT\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) pm.collectionVariables.set('student_user_id', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create instructor login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/users",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo Instructor\",\n  \"email\": \"instructor.{{run_id}}@example.com\",\n  \"password\": \"{{demo_password}}\",\n  \"role\": \"INSTRUCTOR\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) pm.collectionVariables.set('instructor_id', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List users",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Token {{token}}" }],
-            "url": {
-              "raw": "{{base}}/students?search=dela&year_level=3&status=ACTIVE&sort=last_name&page=1&per_page=10",
-              "query": [
-                { "key": "search", "value": "dela" },
-                { "key": "year_level", "value": "3" },
-                { "key": "status", "value": "ACTIVE" },
-                { "key": "sort", "value": "last_name" },
-                { "key": "page", "value": "1" },
-                { "key": "per_page", "value": "10" }
-              ]
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/users?role=INSTRUCTOR&per_page=5"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
             }
-          }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 Programs",
+      "item": [
+        {
+          "name": "Create program",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/programs",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"P{{run_id}}\",\n  \"name\": \"Laboratory Program\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) pm.collectionVariables.set('program_id', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
         },
+        {
+          "name": "Retrieve program",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/programs/{{program_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update program",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/programs/{{program_id}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Created through the acceptance collection.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List programs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/programs?status=ACTIVE&sort=code"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 Students",
+      "item": [
         {
           "name": "Create student",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Token {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/students",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"student_number\": \"2026-88888\",\n  \"first_name\": \"Ana\",\n  \"middle_name\": \"\",\n  \"last_name\": \"Reyes\",\n  \"birth_date\": \"2004-03-12\",\n  \"email\": \"ana.reyes@demo.edu\",\n  \"contact_number\": \"09171234567\",\n  \"address\": \"123 Mabini St., Manila\",\n  \"program_id\": 1,\n  \"year_level\": 2,\n  \"status\": \"ACTIVE\"\n}"
-            },
-            "url": "{{base}}/students"
-          }
+              "raw": "{\n  \"student_number\": \"LAB-{{run_id}}\",\n  \"first_name\": \"Demo\",\n  \"last_name\": \"Dela Cruz\",\n  \"email\": \"student.{{run_id}}@example.com\",\n  \"program_id\": \"{{program_id}}\",\n  \"user_id\": \"{{student_user_id}}\",\n  \"year_level\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) pm.collectionVariables.set('student_id', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Duplicate student number",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/students",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"student_number\": \"LAB-{{run_id}}\",\n  \"first_name\": \"Demo\",\n  \"last_name\": \"Dela Cruz\",\n  \"email\": \"student.{{run_id}}@example.com\",\n  \"program_id\": \"{{program_id}}\",\n  \"user_id\": \"{{student_user_id}}\",\n  \"year_level\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Invalid email",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/students/{{student_id}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"invalid\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Retrieve student",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Token {{token}}" }],
-            "url": "{{base}}/students/1"
-          }
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/students/{{student_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Update student (PATCH)",
+          "name": "Update student",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Authorization", "value": "Token {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/students/{{student_id}}",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"last_name\": \"Ramos\"\n}"
-            },
-            "url": "{{base}}/students/1"
-          }
+              "raw": "{\n  \"contact_number\": \"09123456789\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Duplicate student number (FAIL expected 422)",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Token {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"student_number\": \"2026-88888\",\n  \"first_name\": \"Ana\",\n  \"last_name\": \"Reyes\",\n  \"program_id\": 1,\n  \"year_level\": 2,\n  \"status\": \"ACTIVE\"\n}"
-            },
-            "url": "{{base}}/students"
-          }
-        },
-        {
-          "name": "Invalid email (FAIL expected 422)",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Token {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"student_number\": \"2026-88889\",\n  \"first_name\": \"Ana\",\n  \"last_name\": \"Reyes\",\n  \"email\": \"not-an-email\",\n  \"program_id\": 1,\n  \"year_level\": 2,\n  \"status\": \"ACTIVE\"\n}"
-            },
-            "url": "{{base}}/students"
-          }
-        },
-        {
-          "name": "Not found (FAIL expected 404)",
+          "name": "Search filter sort and paginate",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Token {{token}}" }],
-            "url": "{{base}}/students/99999"
-          }
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/students?search=Dela&program_id={{program_id}}&year_level=4&sort=last_name&per_page=1"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Program filter returns the created student', () => pm.expect(pm.response.json().count).to.equal(1));"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Student academic record",
+          "name": "Not found",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Token {{token}}" }],
-            "url": "{{base}}/students/1/academic-record"
-          }
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/students/999999999"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
     {
-      "name": "Programs",
+      "name": "05 Courses",
       "item": [
-        {
-          "name": "List programs",
-          "request": {
-            "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Token {{token}}" }],
-            "url": "{{base}}/programs"
-          }
-        },
-        {
-          "name": "Create program",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Token {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"code\": \"BSECE\",\n  \"name\": \"Bachelor of Science in Electronics Engineering\",\n  \"description\": \"Electronics engineering program\",\n  \"status\": \"ACTIVE\"\n}"
-            },
-            "url": "{{base}}/programs"
-          }
-        }
-      ]
-    },
-    {
-      "name": "Courses",
-      "item": [
-        {
-          "name": "List courses",
-          "request": {
-            "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Token {{token}}" }],
-            "url": "{{base}}/courses"
-          }
-        },
         {
           "name": "Create course",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Token {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/courses",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"course_code\": \"IT230\",\n  \"course_title\": \"Cloud Computing\",\n  \"description\": \"Introduction to cloud platforms\",\n  \"units\": 3,\n  \"status\": \"ACTIVE\"\n}"
-            },
-            "url": "{{base}}/courses"
-          }
+              "raw": "{\n  \"course_code\": \"C{{run_id}}\",\n  \"course_title\": \"API Laboratory\",\n  \"units\": \"3.0\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) pm.collectionVariables.set('course_id', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Retrieve course",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/courses/{{course_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update course",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/courses/{{course_id}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Backend development\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List courses",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/courses?search=API&sort=course_code"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
     {
-      "name": "Academic Terms",
+      "name": "06 Academic Terms",
       "item": [
         {
-          "name": "List academic terms",
+          "name": "Choose a new academic year",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Token {{token}}" }],
-            "url": "{{base}}/academic-terms"
-          }
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/academic-terms?sort=-academic_year&per_page=1"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const rows = pm.response.json().results; const year = rows.length ? Number(rows[0].academic_year.slice(0,4))+1 : 2026;",
+                  "pm.collectionVariables.set('academic_year', year + '-' + (year+1));",
+                  "pm.collectionVariables.set('start_date', year + '-08-01'); pm.collectionVariables.set('end_date', year + '-12-20');"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Create academic term",
+          "name": "Create term",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Token {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/academic-terms",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"academic_year\": \"2026-2027\",\n  \"semester\": \"FIRST\",\n  \"start_date\": \"2026-08-10\",\n  \"end_date\": \"2026-12-18\",\n  \"status\": \"ACTIVE\"\n}"
-            },
-            "url": "{{base}}/academic-terms"
-          }
+              "raw": "{\n  \"academic_year\": \"{{academic_year}}\",\n  \"semester\": \"FIRST\",\n  \"start_date\": \"{{start_date}}\",\n  \"end_date\": \"{{end_date}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) pm.collectionVariables.set('term_id', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Retrieve term",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/academic-terms/{{term_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Invalid dates",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/academic-terms/{{term_id}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"end_date\": \"2000-01-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
     {
-      "name": "Course Offerings",
+      "name": "07 Course Offerings",
       "item": [
         {
-          "name": "List course offerings",
-          "request": {
-            "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Token {{token}}" }],
-            "url": "{{base}}/course-offerings"
-          }
-        },
-        {
-          "name": "Create course offering",
+          "name": "Create offering",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Token {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/course-offerings",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"course_id\": 1,\n  \"academic_term_id\": 1,\n  \"instructor_id\": 2,\n  \"section\": \"IT101-3\",\n  \"schedule\": \"MW 14:00\",\n  \"room\": \"Room 205\",\n  \"capacity\": 40,\n  \"status\": \"ACTIVE\"\n}"
-            },
-            "url": "{{base}}/course-offerings"
-          }
+              "raw": "{\n  \"course_id\": \"{{course_id}}\",\n  \"academic_term_id\": \"{{term_id}}\",\n  \"instructor_id\": \"{{instructor_id}}\",\n  \"section\": \"A\",\n  \"schedule\": \"MW 09:00-10:30\",\n  \"room\": \"Lab 1\",\n  \"capacity\": 30\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) pm.collectionVariables.set('offering_id', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Enrolled students of offering",
+          "name": "Retrieve offering",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Token {{token}}" }],
-            "url": "{{base}}/course-offerings/1/students"
-          }
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/course-offerings/{{offering_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update offering",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/course-offerings/{{offering_id}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"room\": \"Lab 2\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filter offerings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/course-offerings?instructor_id={{instructor_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
     {
-      "name": "Enrollments",
+      "name": "08 Enrollments",
       "item": [
         {
-          "name": "List enrollments",
+          "name": "Enroll student",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/enrollments",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"student_id\": \"{{student_id}}\",\n  \"course_offering_id\": \"{{offering_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) pm.collectionVariables.set('enrollment_id', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Prevent duplicate enrollment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/enrollments",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"student_id\": \"{{student_id}}\",\n  \"course_offering_id\": \"{{offering_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Invalid offering reference",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/enrollments",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"student_id\": \"{{student_id}}\",\n  \"course_offering_id\": 99999999\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Student enrollments",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Token {{token}}" }],
-            "url": "{{base}}/enrollments?per_page=10"
-          }
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/students/{{student_id}}/enrollments"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Create enrollment",
+          "name": "Offering roster",
           "request": {
-            "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Token {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"student_id\": 1,\n  \"course_offering_id\": 2,\n  \"status\": \"ENROLLED\"\n}"
-            },
-            "url": "{{base}}/enrollments"
-          }
-        },
-        {
-          "name": "Duplicate enrollment (FAIL expected 422)",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Token {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"student_id\": 1,\n  \"course_offering_id\": 2,\n  \"status\": \"ENROLLED\"\n}"
-            },
-            "url": "{{base}}/enrollments"
-          }
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/course-offerings/{{offering_id}}/students"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
     {
-      "name": "Grades",
+      "name": "09 Grades",
       "item": [
         {
-          "name": "List grades",
+          "name": "Instructor login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"instructor.{{run_id}}@example.com\",\n  \"password\": \"{{demo_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) pm.collectionVariables.set('instructor_token', pm.response.json().data.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Encode authorized grade",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{instructor_token}}"
+              }
+            ],
+            "url": "{{base}}/grades",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enrollment_id\": \"{{enrollment_id}}\",\n  \"midterm_grade\": \"85.00\",\n  \"final_grade\": \"90.00\",\n  \"status\": \"FINALIZED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) pm.collectionVariables.set('grade_id', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update authorized grade",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{instructor_token}}"
+              }
+            ],
+            "url": "{{base}}/grades/{{grade_id}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"final_grade\": \"92.00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Out-of-range grade",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{instructor_token}}"
+              }
+            ],
+            "url": "{{base}}/grades/{{grade_id}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"final_grade\": 101\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Instructor cannot view full transcript",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Token {{token}}" }],
-            "url": "{{base}}/grades"
-          }
-        },
-        {
-          "name": "Create grade (instructor for own offering)",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Token {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"enrollment_id\": 1,\n  \"midterm_grade\": 88.5,\n  \"final_grade\": 92.0,\n  \"remarks\": \"Excellent\",\n  \"status\": \"FINALIZED\"\n}"
-            },
-            "url": "{{base}}/grades"
-          }
-        },
-        {
-          "name": "Finalized grade without rating (FAIL expected 422)",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Token {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"enrollment_id\": 3,\n  \"status\": \"FINALIZED\"\n}"
-            },
-            "url": "{{base}}/grades"
-          }
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{instructor_token}}"
+              }
+            ],
+            "url": "{{base}}/students/{{student_id}}/academic-record"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
     {
-      "name": "Authorization Checks",
+      "name": "10 Academic Records and Student Permissions",
       "item": [
         {
-          "name": "Student forbidden: create program (FAIL expected 403)",
+          "name": "Student login",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Token {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base}}/auth/login",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"code\": \"XZZ\",\n  \"name\": \"Forbidden\",\n  \"status\": \"ACTIVE\"\n}"
-            },
-            "url": "{{base}}/programs"
-          }
+              "raw": "{\n  \"email\": \"student.{{run_id}}@example.com\",\n  \"password\": \"{{demo_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) pm.collectionVariables.set('student_token', pm.response.json().data.token);"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Unauthenticated request (FAIL expected 401)",
+          "name": "Own profile",
           "request": {
             "method": "GET",
-            "url": "{{base}}/students"
-          }
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{student_token}}"
+              }
+            ],
+            "url": "{{base}}/students/{{student_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Own grades",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{student_token}}"
+              }
+            ],
+            "url": "{{base}}/students/{{student_id}}/grades"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Own academic record",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{student_token}}"
+              }
+            ],
+            "url": "{{base}}/students/{{student_id}}/academic-record"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Record has finalized grade', () => pm.expect(pm.response.json().data.terms[0].records[0].grade.final_grade).to.equal('92.00'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Other student is hidden",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{student_token}}"
+              }
+            ],
+            "url": "{{base}}/students/1/academic-record"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Student cannot modify grades",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{student_token}}"
+              }
+            ],
+            "url": "{{base}}/grades/{{grade_id}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"final_grade\": 100\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Student cannot create programs",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{student_token}}"
+              }
+            ],
+            "url": "{{base}}/programs",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"DENIED\",\n  \"name\": \"Denied\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout student",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{student_token}}"
+              }
+            ],
+            "url": "{{base}}/auth/logout"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Revoked token rejected",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{student_token}}"
+              }
+            ],
+            "url": "{{base}}/auth/me"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "11 Deletion and Referential Integrity",
+      "item": [
+        {
+          "name": "Protect referenced program",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/programs/{{program_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create disposable program",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/programs",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"D{{run_id}}\",\n  \"name\": \"Disposable\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) pm.collectionVariables.set('delete_id', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete unreferenced program",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/programs/{{delete_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Deleted resource is not found",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/programs/{{delete_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Token {{admin_token}}"
+              }
+            ],
+            "url": "{{base}}/auth/logout"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
         }
       ]
     }
