@@ -212,6 +212,12 @@ class CollectionRegressionTests(APITestBase):
         self.assertEqual(self.client.get('/api/v1/students', {'per_page': 10000}).data['per_page'], 100)
         self.assertEqual(self.client.get('/api/v1/students', {'sort': 'password'}).status_code, 422)
 
+    def test_non_decimal_and_oversized_page_numbers_are_validation_errors(self):
+        for value in ['\u00b2', '9' * 5000]:
+            with self.subTest(length=len(value)):
+                response = self.client.get('/api/v1/students', {'page': value})
+                self.assertEqual(response.status_code, 422)
+
     def test_malformed_json_and_unknown_route(self):
         response = self.client.post('/api/v1/students', '{invalid', content_type='application/json')
         self.assertEqual(response.status_code, 400)

@@ -17,7 +17,7 @@ class Pagination(PageNumberPagination):
     def paginate_queryset(self, queryset, request, view=None):
         for field in ['page', 'per_page']:
             value = request.query_params.get(field)
-            if value is not None and (not value.isdigit() or int(value) < 1):
+            if value is not None and (not value.isascii() or not value.isdigit() or len(value) > 12 or int(value) < 1):
                 raise ValidationError({field: ['Must be a positive integer.']})
         return super().paginate_queryset(queryset, request, view)
 
