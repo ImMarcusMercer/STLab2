@@ -48,7 +48,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'academics.api_support.Pagination',
     'PAGE_SIZE': 20,
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend',
-                               'rest_framework.filters.SearchFilter', 'rest_framework.filters.OrderingFilter'],
+                               'rest_framework.filters.SearchFilter', 'academics.filters.StableOrderingFilter'],
     'ORDERING_PARAM': 'sort',
     'EXCEPTION_HANDLER': 'academics.api_support.exception_handler',
     'DEFAULT_RENDERER_CLASSES': ['rest_framework.renderers.JSONRenderer'],
@@ -63,7 +63,8 @@ SPECTACULAR_SETTINGS = {
     'ENUM_NAME_OVERRIDES': {
         'Status': [('ACTIVE', 'Active'), ('INACTIVE', 'Inactive')],
     },
-    'POSTPROCESSING_HOOKS': ['drf_spectacular.hooks.postprocess_schema_enums', 'academics.schema.add_errors'],
+    'POSTPROCESSING_HOOKS': ['drf_spectacular.hooks.postprocess_schema_enums', 'academics.schema.add_errors',
+                           'academics.schema.add_examples'],
 }
 # No cross-origin browser access is enabled. Configure a specific allowlist if a frontend is added.
 if os.getenv('APP_ENV') == 'production':

@@ -255,7 +255,7 @@ class EnrollmentTests(APITestBase):
         self.auth(self.token_student)
         resp = self.client.get(f'/api/v1/students/{self.student.id}/enrollments')
         self.assertEqual(resp.status_code, 200)
-        self.assertTrue(resp.data['success'])
+        self.assertEqual(resp.data['count'], 1)
 
 
 class GradeTests(APITestBase):

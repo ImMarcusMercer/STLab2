@@ -87,6 +87,10 @@ class StudentSerializer(StrictModelSerializer):
         read_only_fields = ['id', 'created_at', 'updated_at']
 
     def validate_user_id(self, user):
+        request = self.context.get('request')
+        previous = self.instance.user_id if self.instance else None
+        if request and request.user.role != 'ADMIN' and (user.pk if user else None) != previous:
+            raise PermissionDenied('Only administrators may link login accounts to student profiles.')
         matches = Student.objects.filter(user=user) if user else Student.objects.none()
         if self.instance:
             matches = matches.exclude(pk=self.instance.pk)
@@ -185,6 +189,12 @@ class GradeSerializer(StrictModelSerializer):
         exclude = ['enrollment']
         read_only_fields = ['id', 'created_at', 'updated_at']
 
+    def validate_enrollment_id(self, enrollment):
+        request = self.context.get('request')
+        if request and request.user.role == 'INSTRUCTOR' and enrollment.course_offering.instructor_id != request.user.id:
+            raise PermissionDenied('You may only grade your assigned offerings.')
+        return enrollment
+
     def validate(self, attrs):
         enrollment = attrs.get('enrollment', getattr(self.instance, 'enrollment', None))
         request = self.context.get('request')
@@ -227,3 +237,4 @@ class TermRecordSerializer(serializers.Serializer):
 class AcademicRecordSerializer(serializers.Serializer):
     student_id = serializers.IntegerField()
     terms = TermRecordSerializer(many=True)
+    pagination = serializers.DictField()
