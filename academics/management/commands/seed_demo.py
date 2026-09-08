@@ -1,0 +1,194 @@
+from datetime import date
+import os
+import random
+
+from django.core.management.base import BaseCommand, CommandError
+from django.db import transaction
+
+from academics.models import (AcademicTerm, Course, CourseOffering, Enrollment, Grade,
+                              Program, Student, User, Status)
+
+
+class Command(BaseCommand):
+    help = 'Seed a demonstration database for the Student Information Management API.'
+
+    def add_arguments(self, parser):
+        parser.add_argument('--password', default=None,
+                            help='Password for all demo user accounts (12+ chars).')
+
+    @transaction.atomic
+    def handle(self, *args, **options):
+        password = options.get('password') or os.getenv('DEMO_PASSWORD')
+        if not password or len(password) < 12:
+            raise CommandError('Set DEMO_PASSWORD in .env (12+ characters) or pass --password.')
+
+        random.seed(2026)
+        first_names = ['Maria', 'Juan', 'Ana', 'Jose', 'Carla', 'Miguel', 'Rosa', 'Pedro',
+                       'Liza', 'Ramon', 'Sofia', 'Andres', 'Nina', 'Carlos', 'Elena', 'Marco',
+                       'Luz', 'Diego', 'Clara', 'Rico', 'Teresa', 'Paolo', 'Joy', 'Nestor']
+        last_names = ['Santos', 'Reyes', 'Cruz', 'Bautista', 'Ocampo', 'Dela Cruz', 'Ramos',
+                      'Garcia', 'Mendoza', 'Torres', 'Aquino', 'Fernandez', 'Villar', 'Salazar',
+                      'Navarro', 'Lopez', 'Castillo', 'Domingo', 'Rivera', 'Perez', 'Santiago',
+                      'Mercado', 'Roxas', 'Guerrero']
+
+        self.stdout.write('Creating demo admin/registrar/instructor accounts...')
+        admins = [
+            ('Admin User', 'admin@demo.edu', 'ADMIN'),
+            ('Registrar User', 'registrar@demo.edu', 'REGISTRAR'),
+        ]
+        for name, email, role in admins:
+            user, created = User.objects.get_or_create(
+                email=email, defaults={'name': name, 'role': role})
+            if created:
+                user.set_password(password)
+                user.save()
+
+        instructors = []
+        for i in range(1, 4):
+            email = f'instructor{i}@demo.edu'
+            user, created = User.objects.get_or_create(
+                email=email, defaults={'name': f'Instructor {i}', 'role': 'INSTRUCTOR'})
+            if created:
+                user.set_password(password)
+                user.save()
+            instructors.append(user)
+
+        self.stdout.write('Creating programs...')
+        program_data = [
+            ('BSIT', 'Bachelor of Science in Information Technology', 'Core computing program'),
+            ('BSCS', 'Bachelor of Science in Computer Science', 'Theory and application of computing'),
+            ('BSIS', 'Bachelor of Science in Information Systems', 'Systems and organizational computing'),
+        ]
+        programs = []
+        for code, name, desc in program_data:
+            program, _ = Program.objects.get_or_create(
+                code=code, defaults={'name': name, 'description': desc, 'status': Status.ACTIVE})
+            programs.append(program)
+
+        self.stdout.write('Creating 100 students...')
+        students = []
+        for i in range(1, 101):
+            student_number = f'2026-{i:05d}'
+            first = random.choice(first_names)
+            last = random.choice(last_names)
+            program = random.choice(programs)
+            year = random.randint(1, 6)
+            email = f'{first.lower()}.{last.lower()}.{i}@student.demo.edu'
+            birth_year = 2003 + random.randint(-3, 3)
+            existing = Student.objects.filter(student_number=student_number).first()
+            if existing:
+                students.append(existing)
+                continue
+            student = Student.objects.create(
+                student_number=student_number,
+                first_name=first,
+                last_name=last,
+                middle_name=random.choice(['', '', 'D', 'M', 'A']),
+                suffix='',
+                birth_date=date(birth_year, random.randint(1, 12), random.randint(1, 28)),
+                email=email,
+                contact_number=f'09{random.randint(100000000, 999999999)}',
+                address=f'{random.randint(1, 999)} Sample St., Metro Manila',
+                program=program,
+                year_level=year,
+                status=Status.ACTIVE,
+            )
+            students.append(student)
+            if i <= 60:
+                user = User.objects.create_user(
+                    email=email, password=password, name=f'{first} {last}', role='STUDENT')
+                student.user = user
+                student.save(update_fields=['user'])
+
+        self.stdout.write('Creating 20 courses...')
+        course_data = [
+            ('IT101', 'Introduction to Computing', 3),
+            ('IT102', 'Computer Programming 1', 3),
+            ('IT103', 'Computer Programming 2', 3),
+            ('IT104', 'Data Structures and Algorithms', 3),
+            ('IT105', 'Database Management Systems', 3),
+            ('IT106', 'Networking Fundamentals', 3),
+            ('IT107', 'Web Development', 3),
+            ('IT108', 'System Analysis and Design', 3),
+            ('IT109', 'Software Engineering', 3),
+            ('IT110', 'Information Security', 3),
+            ('IT111', 'Operating Systems', 3),
+            ('IT112', 'Mobile Application Development', 3),
+            ('IT113', 'Capstone Project 1', 3),
+            ('IT114', 'Capstone Project 2', 3),
+            ('IT115', 'Human Computer Interaction', 3),
+            ('IT116', 'Multimedia Systems', 3),
+            ('IT117', 'E-Commerce', 3),
+            ('IT118', 'Ethics and Professionalism', 2),
+            ('IT119', 'Quantitative Methods', 3),
+            ('IT120', 'Technopreneurship', 3),
+        ]
+        courses = []
+        for code, title, units in course_data:
+            course, _ = Course.objects.get_or_create(
+                course_code=code, defaults={'course_title': title, 'units': units,
+                                            'description': f'{title} course', 'status': Status.ACTIVE})
+            courses.append(course)
+
+        self.stdout.write('Creating academic terms...')
+        term_data = [
+            ('2025-2026', 'FIRST', date(2025, 8, 11), date(2025, 12, 19)),
+            ('2025-2026', 'SECOND', date(2026, 1, 12), date(2026, 5, 22)),
+        ]
+        terms = []
+        for year, sem, start, end in term_data:
+            term, _ = AcademicTerm.objects.get_or_create(
+                academic_year=year, semester=sem,
+                defaults={'start_date': start, 'end_date': end, 'status': Status.ACTIVE})
+            terms.append(term)
+
+        self.stdout.write('Creating 20 course offerings...')
+        offerings = []
+        for i in range(20):
+            course = courses[i % len(courses)]
+            term = terms[i % len(terms)]
+            instructor = instructors[i % len(instructors)]
+            section = f'{course.course_code}-{i % 2 + 1}'
+            offering, _ = CourseOffering.objects.get_or_create(
+                course=course, academic_term=term, section=section,
+                defaults={'instructor': instructor,
+                          'schedule': f'{["MW", "TTh", "F"][i % 3]} {8 + i % 10}:00',
+                          'room': f'Room {100 + (i % 20) * 5}', 'capacity': 40,
+                          'status': Status.ACTIVE})
+            offerings.append(offering)
+
+        self.stdout.write('Creating 200 enrollments...')
+        targets = set(Enrollment.objects.values_list('student_id', 'course_offering_id'))
+        attempts = 0
+        while len(targets) < 200 and attempts < 2000:
+            attempts += 1
+            student = random.choice(students)
+            offering = random.choice(offerings)
+            key = (student.id, offering.id)
+            if key in targets:
+                continue
+            occupied = offering.enrollments.exclude(status='DROPPED').count()
+            if occupied >= offering.capacity:
+                continue
+            Enrollment.objects.get_or_create(student=student, course_offering=offering,
+                                             defaults={'status': 'ENROLLED'})
+            targets.add(key)
+
+        self.stdout.write('Creating 100 grades...')
+        grade_count = 0
+        for enrollment in Enrollment.objects.select_related('course_offering').all():
+            if grade_count >= 100:
+                break
+            midterm = round(random.uniform(60, 98), 2)
+            final = round(random.uniform(60, 98), 2)
+            remarks = 'Passed' if final >= 60 else 'Failed'
+            if not hasattr(enrollment, 'grade'):
+                Grade.objects.create(enrollment=enrollment, midterm_grade=midterm,
+                                     final_grade=final, remarks=remarks, status='FINALIZED')
+                grade_count += 1
+
+        self.stdout.write(self.style.SUCCESS(
+            f'Done. Users: {User.objects.count()}, Students: {Student.objects.count()}, '
+            f'Programs: {Program.objects.count()}, Courses: {Course.objects.count()}, '
+            f'Terms: {AcademicTerm.objects.count()}, Offerings: {CourseOffering.objects.count()}, '
+            f'Enrollments: {Enrollment.objects.count()}, Grades: {Grade.objects.count()}'))
